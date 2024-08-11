@@ -19,27 +19,28 @@ import java.util.Map;
 public class KafkaProducerConfig
 {
 
-	@Value("${kafka.bootstrap.servers:localhost:9092}")
-	private String bootstrapServers;
+	private final KafkaConfig kafkaConfig;
 
 	private static final Logger logger = LoggerFactory.getLogger(ProducerService.class);
 
-	public static String TEST_TOPIC = "test1"; //UUID.randomUUID().toString();
-	public static String TEST_GROUP_ID = "test1"; //UUID.randomUUID().toString();
+	public KafkaProducerConfig(KafkaConfig kafkaConfig)
+	{
+		this.kafkaConfig = kafkaConfig;
+	}
 
 	@Bean
 	@Qualifier("kafkaProducerStringString")
 	public KafkaTemplate<String, String> equityAccountsMigrationKafkaTemplate(MeterRegistry meterRegistry,
 																			  KafkaTemplateProducerListener<String, String> kafkaTemplateProducerListener)
 	{
-		return kafkaTemplateCriticalLongToBytes(kafkaTemplateProducerListener, meterRegistry, "sample-producer");
+		return kafkaTemplateCriticalLongToBytes(kafkaTemplateProducerListener, meterRegistry, kafkaConfig.getProducerClientId());
 	}
 
 	public KafkaTemplate<String, String> kafkaTemplateCriticalLongToBytes(KafkaTemplateProducerListener<String, String> kafkaTemplateProducerListener,
 																		  MeterRegistry meterRegistry,
 																		  String clientId)
 	{
-		return kafkaTemplateLongToBytes(kafkaTemplateProducerListener, meterRegistry, clientId, bootstrapServers);
+		return kafkaTemplateLongToBytes(kafkaTemplateProducerListener, meterRegistry, clientId, kafkaConfig.getBootstrapServers());
 	}
 
 	public KafkaTemplate<String, String> kafkaTemplateLongToBytes(KafkaTemplateProducerListener<String, String> kafkaTemplateProducerListener,

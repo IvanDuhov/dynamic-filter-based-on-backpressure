@@ -3,19 +3,21 @@ package com.diplom.dynamicfiltering.rest;
 import com.diplom.dynamicfiltering.service.ProducerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController("private/health")
+@RestController
+@RequestMapping("private/health")
 public class HealthController
 {
 	private static final Logger log = LoggerFactory.getLogger(ProducerService.class);
 
 
 	@GetMapping
-	public void getHealth()
+	public ResponseEntity<String> getHealth()
 	{
-		log.info("Perfect health.");
+		return ResponseEntity.ok("Perfect health.");
 	}
-
 }
