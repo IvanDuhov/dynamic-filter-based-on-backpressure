@@ -23,6 +23,7 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	implementation 'io.micrometer:micrometer-core:1.13.0'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator:3.3.2'
+	implementation 'it.unimi.dsi:dsiutils:2.7.3'
 
 	compileOnly 'org.projectlombok:lombok:1.18.30'
 	annotationProcessor 'org.projectlombok:lombok:1.18.30'

@@ -1,6 +1,6 @@
 package com.diplom.dynamicfiltering.rest;
 
-import com.diplom.dynamicfiltering.service.ProducerService;
+import com.diplom.dynamicfiltering.service.SampleProducerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("private/health")
 public class HealthController
 {
-	private static final Logger log = LoggerFactory.getLogger(ProducerService.class);
+	private static final Logger log = LoggerFactory.getLogger(SampleProducerService.class);
 
 
 	@GetMapping

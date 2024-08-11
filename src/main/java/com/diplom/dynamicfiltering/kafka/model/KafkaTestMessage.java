@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 public class KafkaTestMessage
 {
 	private String name;
+	private int popularity;
 	private int age;
 	private long publishedMsTime;
 }

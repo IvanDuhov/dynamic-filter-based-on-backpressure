@@ -1,6 +1,7 @@
 package com.diplom.dynamicfiltering.kafka.consumer;
 
 import com.diplom.dynamicfiltering.kafka.model.KafkaTestMessage;
+import com.diplom.dynamicfiltering.service.MessageProcessingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
@@ -14,10 +15,13 @@ public class KafkaTestMessageConsumer
 
 	private static final Logger logger = LoggerFactory.getLogger(KafkaTestMessageConsumer.class);
 
+	private final MessageProcessingService processingService;
+
 	private final ObjectMapper objectMapper;
 
-	public KafkaTestMessageConsumer(ObjectMapper objectMapper)
+	public KafkaTestMessageConsumer(MessageProcessingService processingService, ObjectMapper objectMapper)
 	{
+		this.processingService = processingService;
 		this.objectMapper = objectMapper;
 	}
 
@@ -29,8 +33,7 @@ public class KafkaTestMessageConsumer
 		{
 			KafkaTestMessage message = objectMapper.readValue(record.value(), KafkaTestMessage.class);
 
-			long delayInS = (System.currentTimeMillis() - message.getPublishedMsTime()) / 1000;
-			logger.info("Processed record with with a delay of " + delayInS + " seconds");
+			processingService.process(message);
 		}
 		catch (Exception e)
 		{

@@ -1,6 +1,6 @@
 package com.diplom.dynamicfiltering.kafka.config;
 
-import com.diplom.dynamicfiltering.service.ProducerService;
+import com.diplom.dynamicfiltering.service.SampleProducerService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class KafkaTemplateProducerListener<K, V> implements org.springframework.kafka.support.ProducerListener<K, V>
 {
 
-	private static final Logger logger = LoggerFactory.getLogger(ProducerService.class);
+	private static final Logger logger = LoggerFactory.getLogger(SampleProducerService.class);
 
 	private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
 	private final AtomicLong messageCount = new AtomicLong();

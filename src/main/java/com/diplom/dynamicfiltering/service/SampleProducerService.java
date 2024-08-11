@@ -2,6 +2,7 @@ package com.diplom.dynamicfiltering.service;
 
 import com.diplom.dynamicfiltering.kafka.model.KafkaTestMessage;
 import com.diplom.dynamicfiltering.kafka.producer.KafkaTestMessageSender;
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -10,26 +11,38 @@ import org.springframework.stereotype.Service;
 import java.util.concurrent.TimeUnit;
 
 @Service
-public class ProducerService
+public class SampleProducerService
 {
 
-	private static final Logger logger = LoggerFactory.getLogger(ProducerService.class);
-	private static final int MESSAGES_PER_MINUTE = 1;
+	private static final Logger logger = LoggerFactory.getLogger(SampleProducerService.class);
+	private static final int MESSAGES_PER_MINUTE = 100;
 	private final KafkaTestMessageSender kafkaTestMessageSender;
 
-	public ProducerService(KafkaTestMessageSender kafkaTestMessageSender)
+	private final XoRoShiRo128PlusRandom random;
+
+	public SampleProducerService(KafkaTestMessageSender kafkaTestMessageSender)
 	{
 		this.kafkaTestMessageSender = kafkaTestMessageSender;
+		this.random = new XoRoShiRo128PlusRandom();
 	}
 
 
 	@Scheduled(fixedRate = 1, timeUnit = TimeUnit.MINUTES)
-	private void producerMessages()
+	private void produceMessages()
 	{
-		KafkaTestMessage user = new KafkaTestMessage("John Doe", 30, System.currentTimeMillis());
-
 		for (int i = 0; i < MESSAGES_PER_MINUTE; i++)
 		{
+			KafkaTestMessage user = new KafkaTestMessage("John Doe", random.nextInt(100), 30, System.currentTimeMillis());
+
+			try
+			{
+				Thread.sleep(10);
+			}
+			catch (InterruptedException e)
+			{
+				throw new RuntimeException(e);
+			}
+
 			kafkaTestMessageSender.sendMessage(user);
 		}
 

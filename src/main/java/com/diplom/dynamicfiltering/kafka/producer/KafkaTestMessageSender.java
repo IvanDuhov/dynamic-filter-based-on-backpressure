@@ -2,7 +2,7 @@ package com.diplom.dynamicfiltering.kafka.producer;
 
 import com.diplom.dynamicfiltering.kafka.config.KafkaConfig;
 import com.diplom.dynamicfiltering.kafka.model.KafkaTestMessage;
-import com.diplom.dynamicfiltering.service.ProducerService;
+import com.diplom.dynamicfiltering.service.SampleProducerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 public class KafkaTestMessageSender
 {
 
-	private static final Logger logger = LoggerFactory.getLogger(ProducerService.class);
+	private static final Logger logger = LoggerFactory.getLogger(SampleProducerService.class);
 	private final KafkaTemplate<String, String> kafkaTemplate;
 
 	private final KafkaConfig kafkaConfig;
