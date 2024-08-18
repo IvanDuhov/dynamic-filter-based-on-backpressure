@@ -1,7 +1,9 @@
 package com.diplom.dynamicfiltering.filter;
 
 import com.diplom.dynamicfiltering.kafka.consumer.KafkaTestMessageConsumer;
+import io.micrometer.core.instrument.MeterRegistry;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,6 +20,8 @@ public class DynamicFilterImpl implements DynamicFilter
 
 	private static final Logger logger = LoggerFactory.getLogger(KafkaTestMessageConsumer.class);
 
+	private final MeterRegistry meterRegistry;
+
 	private static final Double maxDroppingPercentage = 90.0;
 
 	private final List<Long> delays = new ArrayList<>();
@@ -33,6 +37,17 @@ public class DynamicFilterImpl implements DynamicFilter
 
 	@Value("${filter.time.period:60000}")
 	private Long timePeriod; // In milliseconds
+
+	public DynamicFilterImpl(MeterRegistry meterRegistry)
+	{
+		this.meterRegistry = meterRegistry;
+	}
+
+	@PostConstruct
+	public void init()
+	{
+//		meterRegistry.gauge("dropping.percentage", droppingPercentage, value -> droppingPercentage);
+	}
 
 	@Override
 	public boolean shouldProcess(final Long delay, final Integer popularity)
