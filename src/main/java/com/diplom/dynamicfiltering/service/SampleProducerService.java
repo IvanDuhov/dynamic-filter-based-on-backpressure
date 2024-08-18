@@ -15,7 +15,9 @@ public class SampleProducerService
 {
 
 	private static final Logger logger = LoggerFactory.getLogger(SampleProducerService.class);
-	private static final int MESSAGES_PER_MINUTE = 100;
+	private static final int MESSAGES_PER_RUN = 100;
+
+	private static final  int TIME_PERIOD = 1;
 	private final KafkaTestMessageSender kafkaTestMessageSender;
 
 	private final XoRoShiRo128PlusRandom random;
@@ -27,16 +29,16 @@ public class SampleProducerService
 	}
 
 
-	@Scheduled(fixedRate = 1, timeUnit = TimeUnit.MINUTES)
+	@Scheduled(fixedRate = TIME_PERIOD, timeUnit = TimeUnit.MINUTES)
 	private void produceMessages()
 	{
-		for (int i = 0; i < MESSAGES_PER_MINUTE; i++)
+		for (int i = 0; i < MESSAGES_PER_RUN; i++)
 		{
 			KafkaTestMessage user = new KafkaTestMessage("John Doe", random.nextInt(100), 30, System.currentTimeMillis());
 
 			try
 			{
-				Thread.sleep(10);
+				Thread.sleep(MESSAGES_PER_RUN / TIME_PERIOD);
 			}
 			catch (InterruptedException e)
 			{
@@ -46,6 +48,6 @@ public class SampleProducerService
 			kafkaTestMessageSender.sendMessage(user);
 		}
 
-		logger.info("Successfully has sent all the messages for the minute. Count of sent messages: " + MESSAGES_PER_MINUTE);
+		logger.info("Successfully has sent all the messages for the minute. Count of sent messages: " + MESSAGES_PER_RUN);
 	}
 }

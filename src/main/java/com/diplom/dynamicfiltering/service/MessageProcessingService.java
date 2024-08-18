@@ -33,8 +33,6 @@ public class MessageProcessingService
 		try
 		{
 			Thread.sleep(1000);
-
-			logger.info("Processed record with with a delay of " + delayInS + " seconds");
 		}
 		catch (InterruptedException e)
 		{

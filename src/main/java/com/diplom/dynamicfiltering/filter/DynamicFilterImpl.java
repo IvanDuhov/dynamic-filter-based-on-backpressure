@@ -24,7 +24,7 @@ public class DynamicFilterImpl implements DynamicFilter
 
 	private double droppingPercentage = 1;
 
-	private double initialDroppingSteep = -0.9;
+	private double initialDroppingSteep = 0.9;
 
 	private Long lastDelta = 0L;
 
@@ -39,16 +39,20 @@ public class DynamicFilterImpl implements DynamicFilter
 	{
 		delays.add(delay);
 
-		final double dropPercentageForPopularity = calculatePopularityDropPercentage(transformPopularity(popularity));
+		final int transformedPopularity = transformPopularity(popularity);
 
-		logger.info("Drop percentage for a record with pop: " + popularity + " is:" + dropPercentageForPopularity);
+		final double dropPercentageForPopularity = calculatePopularityDropPercentage(transformedPopularity);
+
+//		logger.info("Drop percentage for a record with popularity: " + popularity + " is:" + dropPercentageForPopularity);
 
 		if (dropPercentageForPopularity > 0)
 		{
 			return true;
 		}
 
-		return !(Math.abs(dropPercentageForPopularity) <= random.nextInt(100));
+		final int randomness =  random.nextInt(100);
+
+		return !(Math.abs(dropPercentageForPopularity) >= randomness);
 	}
 
 	@Override
@@ -66,27 +70,30 @@ public class DynamicFilterImpl implements DynamicFilter
 
 		final double deltaPercentageDiff = calculatePercentageDiff(delta, lastDelta);
 
-		droppingPercentage *= deltaPercentageDiff;
+		double tempDropPercentage =  droppingPercentage == 0 ? 1 : droppingPercentage;
 
-		if (droppingPercentage < 0)
+		tempDropPercentage *= Math.abs(deltaPercentageDiff);
+
+		if (tempDropPercentage < 0)
 		{
-			droppingPercentage = 1;
+			tempDropPercentage = 0;
 		}
-		if (droppingPercentage > maxDroppingPercentage)
+		if (tempDropPercentage > maxDroppingPercentage)
 		{
-			droppingPercentage = maxDroppingPercentage;
+			tempDropPercentage = maxDroppingPercentage;
 		}
 
 		lastDelta = delta;
 
-		return droppingPercentage;
+		return tempDropPercentage;
 	}
 
 	@Override
 	// f(x)=-a x+90-b
 	public Double calculatePopularityDropPercentage(final Integer popularity)
 	{
-		return initialDroppingSteep * popularity + (90 - droppingPercentage);
+		logger.info("Drop rate for pop: " + popularity + " is: " + initialDroppingSteep * popularity + (90 - droppingPercentage) + ". Dropping rate at the time of calculation: " + droppingPercentage);
+		return -initialDroppingSteep * popularity + (90 - droppingPercentage);
 	}
 
 	@Scheduled(fixedRate = 10_000, timeUnit = TimeUnit.MILLISECONDS)
