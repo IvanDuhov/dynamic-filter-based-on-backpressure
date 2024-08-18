@@ -1,6 +1,7 @@
 package com.diplom.dynamicfiltering.filter;
 
 import com.diplom.dynamicfiltering.kafka.consumer.KafkaTestMessageConsumer;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import jakarta.annotation.PostConstruct;
@@ -26,14 +27,15 @@ public class DynamicFilterImpl implements DynamicFilter
 
 	private final List<Long> delays = new ArrayList<>();
 
-	private double droppingPercentage = 1;
+	private Double droppingPercentage = 1d;
+
+	private Long currentDelay = 0L;
 
 	private double initialDroppingSteep = 0.9;
 
 	private Long lastDelta = 0L;
 
 	private final XoRoShiRo128PlusRandom random = new XoRoShiRo128PlusRandom();
-
 
 	@Value("${filter.time.period:60000}")
 	private Long timePeriod; // In milliseconds
@@ -46,26 +48,27 @@ public class DynamicFilterImpl implements DynamicFilter
 	@PostConstruct
 	public void init()
 	{
-//		meterRegistry.gauge("dropping.percentage", droppingPercentage, value -> droppingPercentage);
+		Gauge.builder("dropping_percentage", this, obj -> obj.droppingPercentage)
+			 .register(meterRegistry);
+		Gauge.builder("delay", this, obj -> obj.currentDelay)
+			 .register(meterRegistry);
 	}
 
 	@Override
 	public boolean shouldProcess(final Long delay, final Integer popularity)
 	{
-		delays.add(delay);
+		processDelay(delay);
 
 		final int transformedPopularity = transformPopularity(popularity);
 
 		final double dropPercentageForPopularity = calculatePopularityDropPercentage(transformedPopularity);
-
-//		logger.info("Drop percentage for a record with popularity: " + popularity + " is:" + dropPercentageForPopularity);
 
 		if (dropPercentageForPopularity > 0)
 		{
 			return true;
 		}
 
-		final int randomness =  random.nextInt(100);
+		final int randomness = random.nextInt(100);
 
 		return !(Math.abs(dropPercentageForPopularity) >= randomness);
 	}
@@ -85,7 +88,7 @@ public class DynamicFilterImpl implements DynamicFilter
 
 		final double deltaPercentageDiff = calculatePercentageDiff(delta, lastDelta);
 
-		double tempDropPercentage =  droppingPercentage == 0 ? 1 : droppingPercentage;
+		double tempDropPercentage = droppingPercentage == 0 ? 1 : droppingPercentage;
 
 		tempDropPercentage *= Math.abs(deltaPercentageDiff);
 
@@ -107,7 +110,8 @@ public class DynamicFilterImpl implements DynamicFilter
 	// f(x)=-a x+90-b
 	public Double calculatePopularityDropPercentage(final Integer popularity)
 	{
-		logger.info("Drop rate for pop: " + popularity + " is: " + initialDroppingSteep * popularity + (90 - droppingPercentage) + ". Dropping rate at the time of calculation: " + droppingPercentage);
+		logger.info("Drop rate for pop: " + popularity + " is: " + initialDroppingSteep * popularity + (90 - droppingPercentage) +
+					". Dropping rate at the time of calculation: " + droppingPercentage);
 		return -initialDroppingSteep * popularity + (90 - droppingPercentage);
 	}
 
@@ -115,6 +119,7 @@ public class DynamicFilterImpl implements DynamicFilter
 	private void recalculateDropPercentage()
 	{
 		droppingPercentage = calculateBackpressureIndicator(delays);
+//		meterRegistry.summary("dropping_percentage").record(droppingPercentage);
 		logger.info("New dropping percentage: " + droppingPercentage);
 	}
 
@@ -126,5 +131,11 @@ public class DynamicFilterImpl implements DynamicFilter
 	private double calculatePercentageDiff(final Long num1, final Long num2)
 	{
 		return (double) (Math.abs(num1 - num2)) / ((double) (num1 + num2) / num2);
+	}
+
+	private void processDelay(long delay)
+	{
+		delays.add(delay);
+		this.currentDelay = delay;
 	}
 }
