@@ -123,8 +123,9 @@ public class DynamicFilterImpl implements DynamicFilter
 
 		if (periodsBetweenNowAndMaxDelay < 0 && droppingPercentage >= maxDroppingPercentage)
 		{
-			initialDroppingSteep = Math.max(0.9,
-											Math.max(0.25, initialDroppingSteep + periodsBetweenNowAndMaxDelay / deltaPercentageDiff));
+			initialDroppingSteep += Math.max(0.25, periodsBetweenNowAndMaxDelay / Math.abs(deltaPercentageDiff));
+			initialDroppingSteep = Math.min(initialDroppingSteep, 3);
+			return droppingPercentage;
 		}
 		else
 		{
@@ -132,15 +133,16 @@ public class DynamicFilterImpl implements DynamicFilter
 		}
 
 		// 1.25 is the max increase step
-		double multiplier = deltaPercentageDiff * Math.max(1.25, 1 + (double) 1 / Math.min(1, periodsBetweenNowAndMaxDelay));
+		double multiplier = deltaPercentageDiff * Math.max(5, 1 + (double) 1 / Math.min(1, periodsBetweenNowAndMaxDelay));
 
-		if (delta > 0)
+		if (delta < 0 && lastDelta < 0)
 		{
 			tempDropPercentage *= (1 + Math.abs(multiplier) / 100);
 		}
 		else
 		{
-			tempDropPercentage /= (1 - Math.abs(multiplier) / 100);
+			// TODO: calculate if the current going down rate is enough
+			tempDropPercentage /= (1 + Math.abs(multiplier) / 100);
 			logger.info("Decreasing dropping percentage from: " + droppingPercentage + " to " + tempDropPercentage);
 		}
 
@@ -154,7 +156,7 @@ public class DynamicFilterImpl implements DynamicFilter
 		}
 
 		logger.info("delay is: " + currentDelay + ". Delta percentage diff is: " + deltaPercentageDiff + "Periods to burn down: " +
-					periodsBetweenNowAndMaxDelay + ". Multiplier is: " + multiplier +
+					periodsBetweenNowAndMaxDelay + ". Multiplier is: " + multiplier + ". Delta is: " + delta +
 					". New drop % is: " + tempDropPercentage + ". Dropping steep is: " + initialDroppingSteep);
 
 		return tempDropPercentage;
