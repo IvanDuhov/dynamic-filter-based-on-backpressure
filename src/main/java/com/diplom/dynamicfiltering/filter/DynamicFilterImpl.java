@@ -1,5 +1,6 @@
 package com.diplom.dynamicfiltering.filter;
 
+import com.diplom.dynamicfiltering.config.DelayConfig;
 import com.diplom.dynamicfiltering.kafka.consumer.KafkaTestMessageConsumer;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -21,6 +22,10 @@ public class DynamicFilterImpl implements DynamicFilter
 
 	private static final Logger logger = LoggerFactory.getLogger(KafkaTestMessageConsumer.class);
 
+	private static final int recalculatePeriod = 10;
+
+	private final DelayConfig delayConfig;
+
 	private final MeterRegistry meterRegistry;
 
 	private static final Double maxDroppingPercentage = 90.0;
@@ -40,8 +45,9 @@ public class DynamicFilterImpl implements DynamicFilter
 	@Value("${filter.time.period:60000}")
 	private Long timePeriod; // In milliseconds
 
-	public DynamicFilterImpl(MeterRegistry meterRegistry)
+	public DynamicFilterImpl(DelayConfig delayConfig, MeterRegistry meterRegistry)
 	{
+		this.delayConfig = delayConfig;
 		this.meterRegistry = meterRegistry;
 	}
 
@@ -51,6 +57,8 @@ public class DynamicFilterImpl implements DynamicFilter
 		Gauge.builder("dropping_percentage", this, obj -> obj.droppingPercentage)
 			 .register(meterRegistry);
 		Gauge.builder("delay", this, obj -> obj.currentDelay)
+			 .register(meterRegistry);
+		Gauge.builder("delta", this, obj -> obj.lastDelta)
 			 .register(meterRegistry);
 	}
 
@@ -86,11 +94,55 @@ public class DynamicFilterImpl implements DynamicFilter
 
 		final Long delta = startDelay - endDelay;
 
+		if (lastDelta == 0 || delta == 0)
+		{
+			lastDelta = delta;
+			return 0;
+		}
+
 		final double deltaPercentageDiff = calculatePercentageDiff(delta, lastDelta);
 
-		double tempDropPercentage = droppingPercentage == 0 ? 1 : droppingPercentage;
+		double tempDropPercentage = getTempDropPercentage(delta, deltaPercentageDiff);
 
-		tempDropPercentage *= Math.abs(deltaPercentageDiff);
+		lastDelta = delta;
+
+		return tempDropPercentage;
+	}
+
+	private double getTempDropPercentage(final Long delta, final double deltaPercentageDiff)
+	{
+		if (deltaPercentageDiff == 0)
+		{
+			return droppingPercentage;
+		}
+
+		// 10 is initial dropping percentage
+		double tempDropPercentage = droppingPercentage == 0 ? 10 : droppingPercentage;
+
+		long periodsBetweenNowAndMaxDelay = (delayConfig.getMaxDelay() - Math.max(1, currentDelay)) / recalculatePeriod;
+
+		if (periodsBetweenNowAndMaxDelay < 0 && droppingPercentage >= maxDroppingPercentage)
+		{
+			initialDroppingSteep = Math.max(0.9,
+											Math.max(0.25, initialDroppingSteep + periodsBetweenNowAndMaxDelay / deltaPercentageDiff));
+		}
+		else
+		{
+			initialDroppingSteep = 0.9;
+		}
+
+		// 1.25 is the max increase step
+		double multiplier = deltaPercentageDiff * Math.max(1.25, 1 + (double) 1 / Math.min(1, periodsBetweenNowAndMaxDelay));
+
+		if (delta > 0)
+		{
+			tempDropPercentage *= (1 + Math.abs(multiplier) / 100);
+		}
+		else
+		{
+			tempDropPercentage /= (1 - Math.abs(multiplier) / 100);
+			logger.info("Decreasing dropping percentage from: " + droppingPercentage + " to " + tempDropPercentage);
+		}
 
 		if (tempDropPercentage < 0)
 		{
@@ -101,7 +153,9 @@ public class DynamicFilterImpl implements DynamicFilter
 			tempDropPercentage = maxDroppingPercentage;
 		}
 
-		lastDelta = delta;
+		logger.info("delay is: " + currentDelay + ". Delta percentage diff is: " + deltaPercentageDiff + "Periods to burn down: " +
+					periodsBetweenNowAndMaxDelay + ". Multiplier is: " + multiplier +
+					". New drop % is: " + tempDropPercentage + ". Dropping steep is: " + initialDroppingSteep);
 
 		return tempDropPercentage;
 	}
@@ -110,16 +164,13 @@ public class DynamicFilterImpl implements DynamicFilter
 	// f(x)=-a x+90-b
 	public Double calculatePopularityDropPercentage(final Integer popularity)
 	{
-		logger.info("Drop rate for pop: " + popularity + " is: " + initialDroppingSteep * popularity + (90 - droppingPercentage) +
-					". Dropping rate at the time of calculation: " + droppingPercentage);
 		return -initialDroppingSteep * popularity + (90 - droppingPercentage);
 	}
 
-	@Scheduled(fixedRate = 10_000, timeUnit = TimeUnit.MILLISECONDS)
+	@Scheduled(fixedRate = recalculatePeriod, timeUnit = TimeUnit.SECONDS)
 	private void recalculateDropPercentage()
 	{
 		droppingPercentage = calculateBackpressureIndicator(delays);
-//		meterRegistry.summary("dropping_percentage").record(droppingPercentage);
 		logger.info("New dropping percentage: " + droppingPercentage);
 	}
 
@@ -131,6 +182,11 @@ public class DynamicFilterImpl implements DynamicFilter
 	private double calculatePercentageDiff(final Long num1, final Long num2)
 	{
 		return (double) (Math.abs(num1 - num2)) / ((double) (num1 + num2) / num2);
+	}
+
+	private double calculatePercentageIncrease(final Long start, final Long end)
+	{
+		return (double) (end - start) / Math.abs(start) * 100;
 	}
 
 	private void processDelay(long delay)

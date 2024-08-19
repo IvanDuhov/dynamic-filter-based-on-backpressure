@@ -62,6 +62,7 @@
               "mode": "off"
             }
           },
+          "displayName": "delay",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -118,7 +119,7 @@
           "useBackend": false
         }
       ],
-      "title": "Current delay (ms)",
+      "title": "Current delay (s)",
       "type": "timeseries"
     },
     {
@@ -216,7 +217,7 @@
           "useBackend": false
         }
       ],
-      "title": "Panel Title",
+      "title": "Dropped events / s",
       "type": "barchart"
     },
     {
@@ -233,7 +234,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "Dropping percentage",
             "axisPlacement": "auto",
             "axisSoftMax": 100,
             "axisSoftMin": 0,
@@ -264,6 +265,7 @@
               "mode": "off"
             }
           },
+          "displayName": "Dropping percentage",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -308,7 +310,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "dropping_percentage",
+          "expr": "dropping_percentage{application_name=\"dynamicfiltering\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -320,22 +322,121 @@
       ],
       "title": "Dropping percentage",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "rate(processed_events_total[$__rate_interval])",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Processed events / s",
+      "type": "timeseries"
     }
   ],
-  "refresh": "10s",
+  "refresh": "5s",
   "schemaVersion": 39,
   "tags": [],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Dynamic filtering",
   "uid": "edv6qlvg279xcb",
-  "version": 6,
+  "version": 8,
   "weekStart": ""
 }
