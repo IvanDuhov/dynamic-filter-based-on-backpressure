@@ -40,6 +40,8 @@ public class DynamicFilterImpl implements DynamicFilter
 
 	private Long lastDelta = 0L;
 
+	private Long deltaDiff = 0L;
+
 	private final XoRoShiRo128PlusRandom random = new XoRoShiRo128PlusRandom();
 
 	@Value("${filter.time.period:60000}")
@@ -58,7 +60,7 @@ public class DynamicFilterImpl implements DynamicFilter
 			 .register(meterRegistry);
 		Gauge.builder("delay", this, obj -> obj.currentDelay)
 			 .register(meterRegistry);
-		Gauge.builder("delta", this, obj -> obj.lastDelta)
+		Gauge.builder("delta", this, obj -> obj.deltaDiff)
 			 .register(meterRegistry);
 	}
 
@@ -94,13 +96,25 @@ public class DynamicFilterImpl implements DynamicFilter
 
 		final Long delta = startDelay - endDelay;
 
+		logger.info("Delay at the start: " + delays.getFirst() + ". Delay at end: " + delays.getLast() + ". Delta is: " + delta);
+
 		if (lastDelta == 0 || delta == 0)
 		{
 			lastDelta = delta;
 			return 0;
 		}
 
-		final double deltaPercentageDiff = calculatePercentageDiff(delta, lastDelta);
+		deltaDiff = lastDelta - delta;
+
+		if (delta > 0 & lastDelta < 0)
+		{
+			return droppingPercentage;
+		}
+
+		final double deltaPercentageDiff = calculatePercentageDiff(delta, deltaDiff);
+		final double deltaPercentageDiffLog = calculatePercentageDiff(delta, lastDelta);
+		logger.info("Delta % diff is: " + deltaPercentageDiffLog);
+		logger.info("Delta diff % diff is: " + deltaPercentageDiffLog);
 
 		double tempDropPercentage = getTempDropPercentage(delta, deltaPercentageDiff);
 
@@ -109,11 +123,11 @@ public class DynamicFilterImpl implements DynamicFilter
 		return tempDropPercentage;
 	}
 
-	private double getTempDropPercentage(final Long delta, final double deltaPercentageDiff)
+	private double getTempDropPercentage(final Long delta, double deltaPercentageDiff)
 	{
 		if (deltaPercentageDiff == 0)
 		{
-			return droppingPercentage;
+			deltaPercentageDiff = 10;
 		}
 
 		// 10 is initial dropping percentage
@@ -135,14 +149,15 @@ public class DynamicFilterImpl implements DynamicFilter
 		// 1.25 is the max increase step
 		double multiplier = deltaPercentageDiff * Math.max(5, 1 + (double) 1 / Math.min(1, periodsBetweenNowAndMaxDelay));
 
-		if (delta < 0 && lastDelta < 0)
+		logger.info("Delta is: " + delta + ". Last delta is: " + lastDelta);
+		if (delta < 0 & lastDelta < 0)
 		{
 			tempDropPercentage *= (1 + Math.abs(multiplier) / 100);
 		}
-		else
+		else if (delta > 0)
 		{
-			// TODO: calculate if the current going down rate is enough
-			tempDropPercentage /= (1 + Math.abs(multiplier) / 100);
+			// 1.30 is the max drop percentage decrease
+			tempDropPercentage /= Math.max (1.30, 1 + Math.abs(multiplier) / 100);
 			logger.info("Decreasing dropping percentage from: " + droppingPercentage + " to " + tempDropPercentage);
 		}
 
@@ -173,6 +188,7 @@ public class DynamicFilterImpl implements DynamicFilter
 	private void recalculateDropPercentage()
 	{
 		droppingPercentage = calculateBackpressureIndicator(delays);
+		delays.clear();
 		logger.info("New dropping percentage: " + droppingPercentage);
 	}
 
@@ -184,11 +200,6 @@ public class DynamicFilterImpl implements DynamicFilter
 	private double calculatePercentageDiff(final Long num1, final Long num2)
 	{
 		return (double) (Math.abs(num1 - num2)) / ((double) (num1 + num2) / num2);
-	}
-
-	private double calculatePercentageIncrease(final Long start, final Long end)
-	{
-		return (double) (end - start) / Math.abs(start) * 100;
 	}
 
 	private void processDelay(long delay)
